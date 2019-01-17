@@ -1,15 +1,25 @@
-#!/usr/bin/bash
+#!/bin/bash
 #
 #Create a new file .tex corresponding to the skeleton chosen.
 
-TYPE="short_report"
+POSSIBLE_TYPES="dm"
+readonly POSSIBLE_TYPES
+
+CODE="False"
 LANGUAGE="french"
 MARGIN="3"
-
+MATH="False"
+TYPE=""
+FILE=""
 
 usage()
 {
-  echo "Usage: $0 [options] <type> <filename>\n   Type = ${TYPE}\n\nSee $0 --help for more informations."
+  cat << EOF
+Usage: $0 [options] TYPE FILENAME
+    TYPE = $TYPE
+
+See $0 --help for more informations.
+EOF
 }
 
 #options: -h, --help
@@ -18,16 +28,88 @@ help()
 {
   cat <<EOF
 Usage:
-  $0 [options] <type> <filename>\n\n
+  $0 [options] TYPE FILENAME
 
-Create a tex file with a skeleton corresponding to the type.
+Create a tex file with a skeleton corresponding to the type in the current directory.
 
-The parameter type can be: ${TYPE}.
+The parameter type can be: $TYPE.
 
 Options:
-  -l Listings package included with parameters + one example of usage.
-  -m Math packages (amsmath, amssymb, mathtools) included.
+  -c, --code                Listings package included with parameters + one example of usage to add code in the document.
+  -g, --geometry  MARGIN    Set the margins of the document at MARGIN cm.
+  -l, --language  LANGUAGE  LANGUAGE is selected in babel package.
+  -m, --math                Math packages (amsmath, amssymb, mathtools) included.
 EOF
+}
+
+err()
+{
+  echo "Error: $1." >& 1
+}
+
+
+parseopts()
+{
+  if [ $# -ne 2 ]; then
+    err "2 arguments needed"
+    usage
+    exit 2
+  fi
+
+  #TODO getpopts
+  #TODO shift
+  #TODO check number of arguments
+
+  TYPE="$1"
+  FILE=$"$2"
+
+  #add the extension .tex if needed
+  [[ "${FILE}" =~ ".+\.tex$" ]] || FILE="${FILE}.tex"
+
+  readonly CODE LANGUAGE MATH MARGIN TYPE FILE
+}
+
+type_check()
+{
+  if [ $# -eq 0 ]; then
+    err "type selected is not corresponding"
+    usage
+    exit 65
+  fi
+
+  if [[ "$1" != ${TYPE} ]]; then
+    shift
+    type_check "$@"
+  fi
+}
+
+
+?overwrite()
+{
+  local answer
+  echo "${FILE} exists already, do you want to overwrite it ? (yes/no)"
+  read answer
+
+  case "${answer}" in
+    yes | y | Yes | Y )
+      rm -f ${FILE};;
+    no | n | No | N )
+      exit 0 ;;
+    *)
+      ?overwrite
+  esac
+}
+
+arg_check()
+{
+  #check if the type selected is correct
+  type_check "${POSSIBLE_TYPES}"
+
+  #check if there already is a file with the name FILE
+  # and create the file
+  if [[ -e "${FILE}" ]]; then
+    ?overwrite
+  fi
 }
 
 packages_base()
@@ -46,7 +128,7 @@ packages_base()
 EOF
 }
 
-#option: -m
+#option: -m, --math
 packages_math()
 {
   cat <<EOF
@@ -57,7 +139,7 @@ packages_math()
 EOF
 }
 
-#option: -l
+#option: -c, --code
 packages_listings()
 {
   echo <<EOF
@@ -106,17 +188,103 @@ EOF
 example_listings()
 {
   cat <<EOF
+
 \begin{figure}[h]
-\begin{lstlisting}[caption={Exemple.}, label={list:example}]
+  \begin{lstlisting}[caption={Exemple.}, label={list:example}]
 code
-\end{lstlisting}
+  \end{lstlisting}
 \end{figure}
+
 EOF
 }
 
+title_dm()
+{
+  cat <<EOF
+
+%-------title---------------------------------------
+
+\noindent
+\begin{minipage}{0.20\textwidth}
+\includegraphics[width=\textwidth]{logo}
+\end{minipage}
+\hfill
+\begin{minipage}{0.71\textwidth}
+XXXXX -- Matière \hfill Mois. 2019\\
+
+\begin{center}
+{\Large \textbf{Devoir Maison  X -- Titre }}
+
+\vspace{0.5em}
+ \large Prénom \bsc{NOM} \quad Prénom \bsc{Nom}
+\end{center}\vspace{0.3em}
+\end{minipage}\\
+
+\noindent
+\rule{\linewidth}{0.5mm}
+
+%---------------------------------------------------
+
+EOF
+}
+
+skeleton()
+{
+  local class
+  class="${1}"
+
+  echo "\documentclass[a4paper,10pt]{${class}}"
+  packages_base
+  if [[ "${MATH}" = "True" ]]; then
+    packages_math;
+  fi
+  if [[ "${CODE}" = "True" ]]; then
+    packages_listings;
+  fi
+
+  echo ""
+  echo "\begin{document}"
+  title_${TYPE}
+
+  #body
+  local level
+  case "${class}" in
+    article )
+      level="section}";;
+    * )
+      level="chapter";;
+  esac
+
+  cat <<EOF
+\tableofcontents
+%\newpage
+
+\phantomsection
+\addcontentsline{toc}{${level}}{Introduction}
+\\$level*{Introduction}
+
+\\$level{Titre}
+
+$([[ "${CODE}" = "True" ]] || example_listings)
+
+\phantomsection
+\addcontentsline{toc}{${level}}{Conclusion}
+\section*{${level}}
+
+\end{document}
+EOF
+}
 
 main()
 {
-  #TODO
+  #gestion + verification of the options and parameters
+  parseopts "$@"
+  arg_check
+
+  case "${TYPE}" in
+    dm )
+      skeleton article > ${FILE} ;;
+  esac
+  exit 0
 }
 main "$@"
