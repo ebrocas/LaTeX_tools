@@ -2,6 +2,9 @@
 #
 #Create a new file .tex corresponding to the skeleton chosen.
 
+VERSION="0.2"
+readonly VERSION
+
 POSSIBLE_TYPES="dm"
 readonly POSSIBLE_TYPES
 
@@ -12,18 +15,31 @@ MATH="False"
 TYPE=""
 FILE=""
 
+err()
+{
+  echo "Error: $1." >& 1
+}
+
+
 usage()
 {
   cat << EOF
 Usage: $0 [options] TYPE FILENAME
-    TYPE = $TYPE
+    TYPE = $POSSIBLE_TYPES
 
 See $0 --help for more informations.
 EOF
 }
 
+#options: -v, --version
+#desplay the version of the script in the standard output
+version()
+{
+  echo "Version: $VERSION"
+}
+
 #options: -h, --help
-#print the help for the script in the standard output
+#desplay the help for the script in the standard output
 help()
 {
   cat <<EOF
@@ -32,41 +48,68 @@ Usage:
 
 Create a tex file with a skeleton corresponding to the type in the current directory.
 
-The parameter type can be: $TYPE.
+The parameter type can be: $POSSIBLE_TYPES.
 
 Options:
-  -c, --code                Listings package included with parameters + one example of usage to add code in the document.
-  -g, --geometry  MARGIN    Set the margins of the document at MARGIN cm.
-  -l, --language  LANGUAGE  LANGUAGE is selected in babel package.
-  -m, --math                Math packages (amsmath, amssymb, mathtools) included.
+  -c, --code
+      Listings package included with parameters + one example of usage to add code in the document.
+
+  -g MARGIN, --geometry=MARGIN
+      Set the margins of the document at MARGIN cm.
+
+  -h, --help
+      Display help.
+
+  -l LANGUAGE, --language=LANGUAGE
+      LANGUAGE is selected in babel package.
+
+  -m, --math
+      Math packages (amsmath, amssymb, mathtools) included.
+
+  -v, --version
+      Display the version of these script.
 EOF
 }
 
-err()
-{
-  echo "Error: $1." >& 1
-}
-
-
 parseopts()
 {
-  if [ $# -ne 2 ]; then
-    err "2 arguments needed"
-    usage
-    exit 2
-  fi
+  optspec=":cg:hl:m-:v"
+  while getopts "$optspec" optchar; do
+      case "${optchar}" in
+          -)
+              case "${OPTARG}" in
+                  code) CODE="True";;
+                  geometry) err "--geometry needs one arguments, this option has been ignored";;
+                  geometry=*)
+                      val=${OPTARG#*=}
+                      if [[ ${val} =~ ^[0-9]+([.][0-9]+)?$ ]] ; then
+                        MARGIN=${val}
+                      else
+                        err "Argument of --geometry has to be numbers"
+                        exit 65
+                      fi ;;
+                  language|language=) err "--language needs one arguments, this option has been ignored";;
+                  language=*) LANGUAGE=${OPTARG#*=} ;;
+                  help) help; exit 0;;
+                  math) MATH="True";;
+                  version) version;;
+              esac;;
+          c) CODE="True";;
+          g) if [[ ${OPTARG} =~ ^[0-9]+([.][0-9]+)?$ ]] ; then
+               MARGIN=${OPTARG}
+             else
+               err "Argument of -${optchar} has to be numbers"
+               exit 65
+             fi ;;
+          h) help; exit 0 ;;
+          l) LANGUAGE="${OPTARG}";;
+          m) MATH="True";;
+          v) version;;
+          :) err "-${optchar} needs one arguments, this option has been ignored";;
+      esac
+  done
 
-  #TODO getpopts
-  #TODO shift
-  #TODO check number of arguments
-
-  TYPE="$1"
-  FILE=$"$2"
-
-  #add the extension .tex if needed
-  [[ "${FILE}" =~ ".+\.tex$" ]] || FILE="${FILE}.tex"
-
-  readonly CODE LANGUAGE MATH MARGIN TYPE FILE
+  readonly CODE LANGUAGE MATH MARGIN
 }
 
 type_check()
@@ -79,7 +122,7 @@ type_check()
 
   if [[ "$1" != ${TYPE} ]]; then
     shift
-    type_check "$@"
+    type_check "${@}"
   fi
 }
 
@@ -100,16 +143,33 @@ type_check()
   esac
 }
 
-arg_check()
+parseargs()
 {
+  #shift
+  shift "$(($OPTIND - 1))"
+
+  #check number of arguments
+  if [[ $# -lt 2 ]] ; then
+    err "2 arguments needed"
+    usage
+    exit 2
+  fi
+
+  #assignation of arguments
+  TYPE="$1"
+  FILE=$"$2"
+
+  #add the extension .tex if needed
+  [[ "${FILE}" =~ ".+\.tex$" ]] || FILE="${FILE}.tex"
+
+  readonly TYPE FILE
+
   #check if the type selected is correct
   type_check "${POSSIBLE_TYPES}"
 
   #check if there already is a file with the name FILE
   # and create the file
-  if [[ -e "${FILE}" ]]; then
-    ?overwrite
-  fi
+  [[ -e "${FILE}" ]] && ?overwrite
 }
 
 packages_base()
@@ -142,7 +202,7 @@ EOF
 #option: -c, --code
 packages_listings()
 {
-  echo <<EOF
+  cat <<EOF
 %listings (for code)
 \usepackage{listings}
 \lstset{numbers=left,
@@ -235,12 +295,8 @@ skeleton()
 
   echo "\documentclass[a4paper,10pt]{${class}}"
   packages_base
-  if [[ "${MATH}" = "True" ]]; then
-    packages_math;
-  fi
-  if [[ "${CODE}" = "True" ]]; then
-    packages_listings;
-  fi
+  [[ "${MATH}" = "True" ]] && packages_math
+  [[ "${CODE}" = "True" ]] && packages_listings; echo "code" || echo "no code"
 
   echo ""
   echo "\begin{document}"
@@ -250,7 +306,7 @@ skeleton()
   local level
   case "${class}" in
     article )
-      level="section}";;
+      level="section";;
     * )
       level="chapter";;
   esac
@@ -265,7 +321,7 @@ skeleton()
 
 \\$level{Titre}
 
-$([[ "${CODE}" = "True" ]] || example_listings)
+$([[ "${CODE}" = "True" ]] && example_listings)
 
 \phantomsection
 \addcontentsline{toc}{${level}}{Conclusion}
@@ -277,9 +333,9 @@ EOF
 
 main()
 {
-  #gestion + verification of the options and parameters
+  #gestion + verification of the options and arguments
   parseopts "$@"
-  arg_check
+  parseargs "$@"
 
   case "${TYPE}" in
     dm )
