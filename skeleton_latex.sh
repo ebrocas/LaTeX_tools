@@ -2,16 +2,17 @@
 #
 #Create a new file .tex corresponding to the skeleton chosen.
 
-VERSION="0.2"
+VERSION="0.3"
 readonly VERSION
 
-POSSIBLE_TYPES="dm"
+POSSIBLE_TYPES="dm short_report"
 readonly POSSIBLE_TYPES
 
 CODE="False"
 LANGUAGE="french"
 MARGIN="3"
 MATH="False"
+PICTURE="False"
 TYPE=""
 FILE=""
 
@@ -66,6 +67,9 @@ Options:
   -m, --math
       Math packages (amsmath, amssymb, mathtools) included.
 
+  -p, --picture
+      There is a picture on the titlepage.
+
   -v, --version
       Display the version of these script.
 EOF
@@ -73,7 +77,7 @@ EOF
 
 parseopts()
 {
-  optspec=":cg:hl:m-:v"
+  optspec=":cg:hl:mpv-:"
   while getopts "$optspec" optchar; do
       case "${optchar}" in
           -)
@@ -92,6 +96,7 @@ parseopts()
                   language=*) LANGUAGE=${OPTARG#*=} ;;
                   help) help; exit 0;;
                   math) MATH="True";;
+                  picture) PICTURE="True";;
                   version) version;;
               esac;;
           c) CODE="True";;
@@ -104,12 +109,13 @@ parseopts()
           h) help; exit 0 ;;
           l) LANGUAGE="${OPTARG}";;
           m) MATH="True";;
+          p) PICTURE="True";;
           v) version;;
           :) err "-${optchar} needs one arguments, this option has been ignored";;
       esac
   done
 
-  readonly CODE LANGUAGE MATH MARGIN
+  readonly CODE LANGUAGE MATH MARGIN PICTURE
 }
 
 type_check()
@@ -265,11 +271,18 @@ title_dm()
 %-------title---------------------------------------
 
 \noindent
+EOF
+
+if [[ "$PICTURE" = "True" ]]; then
+  cat <<EOF
 \begin{minipage}{0.20\textwidth}
 \includegraphics[width=\textwidth]{logo}
 \end{minipage}
 \hfill
 \begin{minipage}{0.71\textwidth}
+EOF
+fi
+cat <<EOF
 XXXXX -- Matière \hfill Mois. 2019\\
 
 \begin{center}
@@ -278,13 +291,49 @@ XXXXX -- Matière \hfill Mois. 2019\\
 \vspace{0.5em}
  \large Prénom \bsc{NOM} \quad Prénom \bsc{Nom}
 \end{center}\vspace{0.3em}
-\end{minipage}\\
+$( [[ "$PICTURE" = "True" ]] && echo("\end{minipage}\\") )
 
 \noindent
 \rule{\linewidth}{0.5mm}
 
 %---------------------------------------------------
 
+\tableofcontents
+EOF
+}
+
+title_short_report()
+{
+  cat <<EOF
+
+%-------title---------------------------------------
+
+\thispagestyle{empty}
+~
+\vfill
+\begin{center}
+$( [[ "$PICTURE" = "True" ]] && echo (" \includegraphics[width=0.3\textwidth]{logo}\\[0.5cm]")
+
+    {\LARGE Filière informatique, 1\iere{} année}\\[0.1cm]
+    {\LARGE \bsc{Enseirb-Matmeca}}\\[1.5cm]
+    {\Large \bfseries \bsc{--- Matière ---}}\\[0.5cm]
+    \rule{\linewidth}{0.5mm}\\[0.4cm]
+    {\Huge \bfseries Titre\\[0.4cm]}
+    \rule{\linewidth}{0.5mm}\\[1.5cm]
+    {\Large Prénom \bsc{Nom} \quad Prénom \bsc{Nom}}\\[0.5cm]
+    {\large Encadré par Prénom \bsc{Nom}}\\
+    \vfill
+    {\large Semestre ?}\\[0.5cm]
+    {\large 20??}
+    \vfill
+    ~
+\end{center}
+\newpage
+
+%---------------------------------------------------
+
+\tableofcontents
+\newpage
 EOF
 }
 
@@ -312,8 +361,6 @@ skeleton()
   esac
 
   cat <<EOF
-\tableofcontents
-%\newpage
 
 \phantomsection
 \addcontentsline{toc}{${level}}{Introduction}
@@ -338,9 +385,11 @@ main()
   parseargs "$@"
 
   case "${TYPE}" in
-    dm )
+    dm | short_report)
       skeleton article > ${FILE} ;;
   esac
+
+  #copy logo
   exit 0
 }
 main "$@"
