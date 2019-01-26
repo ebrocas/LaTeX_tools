@@ -75,108 +75,6 @@ Options:
 EOF
 }
 
-parseopts()
-{
-  optspec=":cg:hl:mpv-:"
-  while getopts "$optspec" optchar; do
-      case "${optchar}" in
-          -)
-              case "${OPTARG}" in
-                  code) CODE="True";;
-                  geometry) err "--geometry needs one arguments, this option has been ignored";;
-                  geometry=*)
-                      val=${OPTARG#*=}
-                      if [[ ${val} =~ ^[0-9]+([.][0-9]+)?$ ]] ; then
-                        MARGIN=${val}
-                      else
-                        err "Argument of --geometry has to be numbers"
-                        exit 65
-                      fi ;;
-                  language|language=) err "--language needs one arguments, this option has been ignored";;
-                  language=*) LANGUAGE=${OPTARG#*=} ;;
-                  help) help; exit 0;;
-                  math) MATH="True";;
-                  picture) PICTURE="True";;
-                  version) version;;
-              esac;;
-          c) CODE="True";;
-          g) if [[ ${OPTARG} =~ ^[0-9]+([.][0-9]+)?$ ]] ; then
-               MARGIN=${OPTARG}
-             else
-               err "Argument of -${optchar} has to be numbers"
-               exit 65
-             fi ;;
-          h) help; exit 0 ;;
-          l) LANGUAGE="${OPTARG}";;
-          m) MATH="True";;
-          p) PICTURE="True";;
-          v) version;;
-          :) err "-${optchar} needs one arguments, this option has been ignored";;
-      esac
-  done
-
-  readonly CODE LANGUAGE MATH MARGIN PICTURE
-}
-
-type_check()
-{
-  if [ $# -eq 0 ]; then
-    err "type selected is not corresponding"
-    usage
-    exit 65
-  fi
-
-  if [[ "$1" != ${TYPE} ]]; then
-    shift
-    type_check "${@}"
-  fi
-}
-
-
-?overwrite()
-{
-  local answer
-  echo "${FILE} exists already, do you want to overwrite it ? (yes/no)"
-  read answer
-
-  case "${answer}" in
-    yes | y | Yes | Y )
-      rm -f ${FILE};;
-    no | n | No | N )
-      exit 0 ;;
-    *)
-      ?overwrite
-  esac
-}
-
-parseargs()
-{
-  #shift
-  shift "$(($OPTIND - 1))"
-
-  #check number of arguments
-  if [[ $# -lt 2 ]] ; then
-    err "2 arguments needed"
-    usage
-    exit 2
-  fi
-
-  #assignation of arguments
-  TYPE="$1"
-  FILE=$"$2"
-
-  #add the extension .tex if needed
-  [[ "${FILE}" =~ ".+\.tex$" ]] || FILE="${FILE}.tex"
-
-  readonly TYPE FILE
-
-  #check if the type selected is correct
-  type_check "${POSSIBLE_TYPES}"
-
-  #check if there already is a file with the name FILE
-  # and create the file
-  [[ -e "${FILE}" ]] && ?overwrite
-}
 
 packages_base()
 {
@@ -337,6 +235,109 @@ $( [[ "$PICTURE" = "True" ]] && echo (" \includegraphics[width=0.3\textwidth]{lo
 EOF
 }
 
+parseopts()
+{
+  optspec=":cg:hl:mpv-:"
+  while getopts "$optspec" optchar; do
+    case "${optchar}" in
+      -)
+      case "${OPTARG}" in
+        code) CODE="True";;
+        geometry) err "--geometry needs one arguments, this option has been ignored";;
+        geometry=*)
+        val=${OPTARG#*=}
+        if [[ ${val} =~ ^[0-9]+([.][0-9]+)?$ ]] ; then
+          MARGIN=${val}
+        else
+          err "Argument of --geometry has to be numbers"
+          exit 65
+        fi ;;
+        language|language=) err "--language needs one arguments, this option has been ignored";;
+        language=*) LANGUAGE=${OPTARG#*=} ;;
+        help) help; exit 0;;
+        math) MATH="True";;
+        picture) PICTURE="True";;
+        version) version;;
+      esac;;
+      c) CODE="True";;
+      g) if [[ ${OPTARG} =~ ^[0-9]+([.][0-9]+)?$ ]] ; then
+        MARGIN=${OPTARG}
+      else
+        err "Argument of -${optchar} has to be numbers"
+        exit 65
+      fi ;;
+      h) help; exit 0 ;;
+      l) LANGUAGE="${OPTARG}";;
+      m) MATH="True";;
+      p) PICTURE="True";;
+      v) version;;
+      :) err "-${optchar} needs one arguments, this option has been ignored";;
+    esac
+  done
+
+  readonly CODE LANGUAGE MATH MARGIN PICTURE
+}
+
+type_check()
+{
+  if [ $# -eq 0 ]; then
+    err "type selected is not corresponding"
+    usage
+    exit 65
+  fi
+
+  if [[ "$1" != ${TYPE} ]]; then
+    shift
+    type_check "${@}"
+  fi
+}
+
+
+?overwrite()
+{
+  local answer
+  echo "${FILE} exists already, do you want to overwrite it ? (yes/no)"
+  read answer
+
+  case "${answer}" in
+    yes | y | Yes | Y )
+    rm -f ${FILE};;
+    no | n | No | N )
+    exit 0 ;;
+    *)
+    ?overwrite
+  esac
+}
+
+parseargs()
+{
+  #shift
+  shift "$(($OPTIND - 1))"
+
+  #check number of arguments
+  if [[ $# -lt 2 ]] ; then
+    err "2 arguments needed"
+    usage
+    exit 2
+  fi
+
+  #assignation of arguments
+  TYPE="$1"
+  FILE=$"$2"
+
+  #add the extension .tex if needed
+  [[ "${FILE}" =~ ".+\.tex$" ]] || FILE="${FILE}.tex"
+
+  readonly TYPE FILE
+
+  #check if the type selected is correct
+  type_check "${POSSIBLE_TYPES}"
+
+  #check if there already is a file with the name FILE
+  # and create the file
+  [[ -e "${FILE}" ]] && ?overwrite
+}
+
 skeleton()
 {
   local class
@@ -349,6 +350,8 @@ skeleton()
 
   echo ""
   echo "\begin{document}"
+  echo ""
+
   title_${TYPE}
 
   #body
@@ -361,7 +364,6 @@ skeleton()
   esac
 
   cat <<EOF
-
 \phantomsection
 \addcontentsline{toc}{${level}}{Introduction}
 \\$level*{Introduction}
