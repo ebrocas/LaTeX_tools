@@ -2,7 +2,7 @@
 #
 #Create a new file .tex corresponding to the skeleton chosen.
 
-VERSION="0.3"
+VERSION="0.4"
 readonly VERSION
 
 POSSIBLE_TYPES="dm short_report"
@@ -12,6 +12,7 @@ CODE="False"
 LANGUAGE="french"
 MARGIN="3"
 MATH="False"
+SPLIT="False"
 PICTURE="False"
 TYPE=""
 FILE=""
@@ -69,6 +70,9 @@ Options:
 
   -p, --picture
       There is a picture on the titlepage.
+
+  -s, --split
+      The document is modular : one file per section/chapter.
 
   -v, --version
       Display the version of these script.
@@ -181,7 +185,7 @@ if [[ "$PICTURE" = "True" ]]; then
 EOF
 fi
 cat <<EOF
-XXXXX -- Matière \hfill Mois. 2019\\
+XXXXX -- Matière \hfill Mois. 2019\\\\
 
 \begin{center}
 {\Large \textbf{Devoir Maison  X -- Titre }}
@@ -189,7 +193,7 @@ XXXXX -- Matière \hfill Mois. 2019\\
 \vspace{0.5em}
  \large Prénom \bsc{NOM} \quad Prénom \bsc{Nom}
 \end{center}\vspace{0.3em}
-$( [[ "$PICTURE" = "True" ]] && echo("\end{minipage}\\") )
+$( [[ "$PICTURE" = "True" ]] && echo "\end{minipage}\\\\" )
 
 \noindent
 \rule{\linewidth}{0.5mm}
@@ -210,18 +214,18 @@ title_short_report()
 ~
 \vfill
 \begin{center}
-$( [[ "$PICTURE" = "True" ]] && echo (" \includegraphics[width=0.3\textwidth]{logo}\\[0.5cm]")
+$( [[ "$PICTURE" = "True" ]] && echo " \includegraphics[width=0.3\textwidth]{logo}\\\\[0.5cm]")
 
-    {\LARGE Filière informatique, 1\iere{} année}\\[0.1cm]
-    {\LARGE \bsc{Enseirb-Matmeca}}\\[1.5cm]
-    {\Large \bfseries \bsc{--- Matière ---}}\\[0.5cm]
-    \rule{\linewidth}{0.5mm}\\[0.4cm]
-    {\Huge \bfseries Titre\\[0.4cm]}
-    \rule{\linewidth}{0.5mm}\\[1.5cm]
-    {\Large Prénom \bsc{Nom} \quad Prénom \bsc{Nom}}\\[0.5cm]
-    {\large Encadré par Prénom \bsc{Nom}}\\
+    {\LARGE Filière informatique, 1\iere{} année}\\\\[0.1cm]
+    {\LARGE \bsc{Enseirb-Matmeca}}\\\\[1.5cm]
+    {\Large \bfseries \bsc{--- Matière ---}}\\\\[0.5cm]
+    \rule{\linewidth}{0.5mm}\\\\[0.4cm]
+    {\Huge \bfseries Titre\\\\[0.4cm]}
+    \rule{\linewidth}{0.5mm}\\\\[1.5cm]
+    {\Large Prénom \bsc{Nom} \quad Prénom \bsc{Nom}}\\\[0.5cm]
+    {\large Encadré par Prénom \bsc{Nom}}\\\\
     \vfill
-    {\large Semestre ?}\\[0.5cm]
+    {\large Semestre ?}\\\\[0.5cm]
     {\large 20??}
     \vfill
     ~
@@ -235,9 +239,39 @@ $( [[ "$PICTURE" = "True" ]] && echo (" \includegraphics[width=0.3\textwidth]{lo
 EOF
 }
 
+body_introduction()
+{
+  cat <<EOF
+\phantomsection
+\addcontentsline{toc}{$1}{Introduction}
+\\$level*{Introduction}
+
+EOF
+}
+
+body_CH01()
+{
+  cat <<EOF
+\\$1{Titre}
+
+$([[ "${CODE}" = "True" ]] && example_listings)
+
+EOF
+}
+
+body_conclusion()
+{
+  cat <<EOF
+\phantomsection
+\addcontentsline{toc}{${level}}{Conclusion}
+\section*{${level}}
+
+EOF
+}
+
 parseopts()
 {
-  optspec=":cg:hl:mpv-:"
+  optspec=":cg:hl:mpsv-:"
   while getopts "$optspec" optchar; do
     case "${optchar}" in
       -)
@@ -257,6 +291,7 @@ parseopts()
         help) help; exit 0;;
         math) MATH="True";;
         picture) PICTURE="True";;
+        split) SPLIT="True";;
         version) version;;
       esac;;
       c) CODE="True";;
@@ -270,12 +305,13 @@ parseopts()
       l) LANGUAGE="${OPTARG}";;
       m) MATH="True";;
       p) PICTURE="True";;
+      s) SPLIT="True";;
       v) version;;
       :) err "-${optchar} needs one arguments, this option has been ignored";;
     esac
   done
 
-  readonly CODE LANGUAGE MATH MARGIN PICTURE
+  readonly CODE LANGUAGE MATH MARGIN PICTURE SPLIT
 }
 
 type_check()
@@ -331,12 +367,13 @@ parseargs()
   readonly TYPE FILE
 
   #check if the type selected is correct
-  type_check "${POSSIBLE_TYPES}"
+  type_check ${POSSIBLE_TYPES}
 
   #check if there already is a file with the name FILE
   # and create the file
   [[ -e "${FILE}" ]] && ?overwrite
 }
+
 
 skeleton()
 {
@@ -363,21 +400,22 @@ skeleton()
       level="chapter";;
   esac
 
-  cat <<EOF
-\phantomsection
-\addcontentsline{toc}{${level}}{Introduction}
-\\$level*{Introduction}
+  if [[ "${SPLIT}" = "True" ]]; then
+    #ligne compil
+    local inclusion
+    [[ "${level}" = "section" ]] && inclusion="input" || inclusion="include"
+    for f in 'introduction' 'CH01' 'conclusion'; do
+      mkdir -p $f
+      echo "% !TEX root = $(pwd)/${FILE}" > $f/$f.tex
+      body_$f "${level}" >> $f/$f.tex
+      echo "${inclusion}{./$f/$f}"
+    done
+  else
+    body_introduction "${level}"
+    body_section "${level}"
+  fi
 
-\\$level{Titre}
-
-$([[ "${CODE}" = "True" ]] && example_listings)
-
-\phantomsection
-\addcontentsline{toc}{${level}}{Conclusion}
-\section*{${level}}
-
-\end{document}
-EOF
+  echo "\end{document}"
 }
 
 main()
