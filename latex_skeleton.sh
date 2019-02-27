@@ -1,11 +1,11 @@
- #!/bin/bash
+#!/usr/bin/env bash
 #
 #Create a new file .tex corresponding to the skeleton chosen.
 
 VERSION="0.4"
 readonly VERSION
 
-POSSIBLE_TYPES="dm short_report"
+POSSIBLE_TYPES="homework short_report"
 readonly POSSIBLE_TYPES
 
 CODE="False"
@@ -54,7 +54,7 @@ The parameter type can be: $POSSIBLE_TYPES.
 
 Options:
   -c, --code
-      Listings package included with parameters + one example of usage to add code in the document.
+      Listings package included with parameters + one example of a listings figure (some code) in the document.
 
   -g MARGIN, --geometry=MARGIN
       Set the margins of the document at MARGIN cm.
@@ -166,7 +166,7 @@ code
 EOF
 }
 
-title_dm()
+title_homework()
 {
   cat <<EOF
 
@@ -185,13 +185,13 @@ if [[ "$PICTURE" = "True" ]]; then
 EOF
 fi
 cat <<EOF
-XXXXX -- Matière \hfill Mois. 2019\\\\
+XXXXX -- Subject \hfill Mois. 2019\\\\
 
 \begin{center}
-{\Large \textbf{Devoir Maison  X -- Titre }}
+{\Large \textbf{Homework  X -- Title }}
 
 \vspace{0.5em}
- \large Prénom \bsc{NOM} \quad Prénom \bsc{Nom}
+ \large Xxxxx \bsc{Name} \quad Xxxxxx \bsc{Name}
 \end{center}\vspace{0.3em}
 $( [[ "$PICTURE" = "True" ]] && echo "\end{minipage}\\\\" )
 
@@ -216,16 +216,16 @@ title_short_report()
 \begin{center}
 $( [[ "$PICTURE" = "True" ]] && echo " \includegraphics[width=0.3\textwidth]{logo}\\\\[0.5cm]")
 
-    {\LARGE Filière informatique, 1\iere{} année}\\\\[0.1cm]
-    {\LARGE \bsc{Enseirb-Matmeca}}\\\\[1.5cm]
-    {\Large \bfseries \bsc{--- Matière ---}}\\\\[0.5cm]
+    {\LARGE Field, Year}\\\\[0.1cm]
+    {\LARGE \bsc{School}}\\\\[1.5cm]
+    {\Large \bfseries \bsc{--- Subject ---}}\\\\[0.5cm]
     \rule{\linewidth}{0.5mm}\\\\[0.4cm]
-    {\Huge \bfseries Titre\\\\[0.4cm]}
+    {\Huge \bfseries Tittle\\\\[0.4cm]}
     \rule{\linewidth}{0.5mm}\\\\[1.5cm]
-    {\Large Prénom \bsc{Nom} \quad Prénom \bsc{Nom}}\\\[0.5cm]
-    {\large Encadré par Prénom \bsc{Nom}}\\\\
+    {\Large Xxxxxx \bsc{Yyyyyyy} \quad Xxxxxx \bsc{Yyyyy}}\\\[0.5cm]
+    {\large Supervised by Xxxxxx \bsc{Name}}\\\\
     \vfill
-    {\large Semestre ?}\\\\[0.5cm]
+    {\large Semester ?}\\\\[0.5cm]
     {\large 20??}
     \vfill
     ~
@@ -381,10 +381,13 @@ skeleton()
   class="${1}"
 
   echo "\documentclass[a4paper,10pt]{${class}}"
+
+  #packages
   packages_base
   [[ "${MATH}" = "True" ]] && packages_math
-  [[ "${CODE}" = "True" ]] && packages_listings; echo "code" || echo "no code"
+  [[ "${CODE}" = "True" ]] && packages_listings
 
+  #document
   echo ""
   echo "\begin{document}"
   echo ""
@@ -425,7 +428,7 @@ main()
   parseargs "$@"
 
   case "${TYPE}" in
-    dm | short_report)
+    homework | short_report)
       skeleton article > ${FILE} ;;
   esac
 
